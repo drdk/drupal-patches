@@ -1,0 +1,66 @@
+diff --git a/redirect.info b/redirect.info
+old mode 100644
+new mode 100755
+diff --git a/redirect.module b/redirect.module
+old mode 100644
+new mode 100755
+index 9f7a256..b50fb53
+--- a/redirect.module
++++ b/redirect.module
+@@ -408,6 +408,56 @@ function redirect_path_update(array $path) {
+ }
+ 
+ /**
++ * Implements hook_redirect_alter.
++ *
++ * Users can trigger a redirect loop between url aliases and redirects when they
++ * input manual url aliases. By checking if a url alias exists which redirects
++ * the other way, we can avoid this.
++ * it shouldn't be necessary, but the modules path, path_auto and redirect
++ * should really be one AND part of core after haven been rewritten!
++ *
++ * @param object $redirect
++ *  A redirect object.
++ */
++function redirect_redirect_alter($redirect) {
++  if (redirect_check_url_alias_pair_exists($redirect)) {
++    unset($redirect->callback);
++  }
++}
++
++/**
++ * Check that an url alias pointing to the alias being redirected to does not
++ * point back to the page being redirected from...
++ *
++ * @param
++ *  A redirect object.
++ *
++ * @return
++ *  Number of url aliases matching the reversed redirect.
++ */
++function redirect_check_url_alias_pair_exists($redirect) {
++  if (empty($redirect->redirect) || empty($redirect->source) || empty($redirect->language)) {
++    return 0;
++  }
++
++  $args = array(
++    ':source' => $redirect->redirect,
++    ':alias' => $redirect->source,
++    ':language' => $redirect->language,
++    ':language_none' => LANGUAGE_NONE,
++  );
++
++  return db_query('
++    SELECT
++      source, alias FROM {url_alias}
++    WHERE
++      source IN (:source)
++      AND alias IN (:alias)
++      AND language IN (:language, :language_none)',
++    $args)->rowCount();
++}
++
++/**
+  * Implements hook_path_delete().
+  */
+ function redirect_path_delete($path) {

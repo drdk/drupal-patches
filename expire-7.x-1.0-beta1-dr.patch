@@ -1,0 +1,318 @@
+diff --git a/expire.admin.inc b/expire.admin.inc
+old mode 100644
+new mode 100755
+index b104251..9241a02
+--- a/expire.admin.inc
++++ b/expire.admin.inc
+@@ -62,5 +62,20 @@ function expire_admin_settings_form() {
+     '#description'   => t('Include the base URL in expire requests. Compatible with Domain Access'),
+   );
+ 
++  if (module_exists('path') || module_exists('redirect')) {
++    $form['path'] = array(
++      '#type'          => 'fieldset',
++      '#title'         => t('Expire paths'),
++    );
++
++    $form['path']['expire_path_lookup_depth'] = array(
++      '#type'          => 'select',
++      '#title'         => t('Url alias/redirect lookup depth'),
++      '#options'       => range(0, 20, 1),
++      '#default_value' => variable_get('expire_path_lookup_depth', EXPIRE_PATH_LOOKUP_DEPTH),
++      '#description'   => t('When looking up url aliases and redirects, they might point to other aliases/redirects. Select a maximum number of iterations for this search through the path hierarchy.'),
++    );
++  }
++
+   return system_settings_form($form);
+ }
+diff --git a/expire.module b/expire.module
+old mode 100644
+new mode 100755
+index 6633729..89c056c
+--- a/expire.module
++++ b/expire.module
+@@ -11,6 +11,7 @@ define('EXPIRE_FLUSH_MENU_ITEMS', 1);
+ define('EXPIRE_FLUSH_NODE_REFERENCES', TRUE);
+ define('EXPIRE_FLUSH_FRONT', TRUE);
+ define('EXPIRE_INCLUDE_BASE_URL', TRUE);
++define('EXPIRE_PATH_LOOKUP_DEPTH', 5);
+ 
+ /**
+  * Implementation of hook_menu().
+@@ -394,6 +395,8 @@ function expire_get_menu_structure($menu, $found, $needle, $first, &$found_globa
+  */
+ function expire_cache_derivative($paths, &$node = NULL) {
+   global $base_path;
++  static $shutdown_registered = FALSE;
++
+   $expire = array();
+ 
+   if (empty($paths)) {
+@@ -413,27 +416,29 @@ function expire_cache_derivative($paths, &$node = NULL) {
+       $expire[] = $path;
+     }
+ 
+-    // Path alias
++    // Path alias. Get the current alias, run through all the core
++    // functionality.
+     $path_alias = url($path, array('absolute' => FALSE));
+-    // Remove the base path
+-    $expire[] = substr($path_alias, strlen($base_path));
+-
+-    // Path redirects
+-    if (module_exists('redirect')) {
+-      $redirects = redirect_load_multiple(array(), array('redirect' => $path));
+-      if (isset($redirects) && !empty($redirects)) {
+-        foreach ($redirects as $redirect) {
+-          if (!empty($redirect->source)) {
+-            $expire[] = $redirect->source;
+-          }
+-        }
+-      }
++
++    // The hook_url_outbound_alter() might add an absolute url, so we only wish
++    // to add the path, if it's not a complete url.
++    if (strpos($path_alias, 'http') !== 0) {
++      // Remove the base path.
++      $expire[] = substr($path_alias, strlen($base_path));
+     }
++
+   }
+ 
+   // Allow other modules to modify the list prior to expiring
+   drupal_alter('expire_cache', $expire, $node, $paths);
+ 
++  // Path redirects and aliases. These are looked directly in the database in an
++  // iterative fasion to make sure, that all paths pointing to the current path
++  // is expired.
++  if (module_exists('path') || module_exists('redirect')) {
++    $expire = expire_get_alternate_paths_by_paths($expire, variable_get('expire_path_lookup_depth', EXPIRE_PATH_LOOKUP_DEPTH));
++  }
++
+   // Expire cached files
+   if (empty($expire)) {
+     return FALSE;
+@@ -465,17 +470,220 @@ function expire_cache_derivative($paths, &$node = NULL) {
+   else {
+     $urls = $expire;
+   }
++
++  // Store urls for expiration at the end of the request.
++  _expire_static_urls($urls);
++
++  if (!$shutdown_registered) {
++    $shutdown_registered = TRUE;
++    drupal_register_shutdown_function('expire_shutdown_function');
++  }
++
++  return count($urls);
++}
++
++/**
++ * Get url aliases and redirects which points to the given paths.
++ *
++ * The search is iterative, so that redirects pointing to url aliases etc. is
++ * included.
++ *
++ * @param array $paths
++ *   Paths to search for alternate paths from.
++ * @param int $max_lookup_depth
++ *   Integer controlling how many iterations we max should search for aliaes.
++ *
++ * @return array
++ *   Array of paths data, indexed by their path.
++ */
++function expire_get_alternate_paths_by_paths($paths, $max_lookup_depth = 5) {
++  // Register how may lookup iterations we have gone through.
++  static $lookup_depth = 0;
++
++  $lookup_depth++;
++
++  if ($lookup_depth > $max_lookup_depth) {
++    return $paths;
++  }
++
++  $path_count_pre_lookup = count($paths);
++
++  if (module_exists('path')) {
++    $paths += expire_get_url_aliases_by_paths($paths);
++  }
++  if (module_exists('redirect')) {
++    $paths += expire_get_redirects_by_paths($paths);
++  }
++
++  // If we have found more paths, we need to find paths pointing to these paths
++  // as well. Do it all again with the complete set of paths again.
++  if ($path_count_pre_lookup < count($paths)) {
++    $paths += expire_get_alternate_paths_by_paths($paths, $max_lookup_depth);
++  }
++
++  $lookup_depth--;
++
++  return $paths;
++}
++
++/**
++ * Get url aliases which points to the given paths.
++ *
++ * @param array $paths
++ *   Paths to search for alternate paths from.
++ *
++ * @return array
++ *   Array of paths data, indexed by their path.
++ */
++function expire_get_url_aliases_by_paths($paths) {
++  $url_aliases = array();
++
++  if (!module_exists('path')) {
++    return $paths;
++  }
++
++  // Url aliases.
++  $result_url_alias = db_select('url_alias', 'ua')
++    ->fields('ua')
++    ->condition('source', $paths, 'IN')
++    ->orderBy('pid', 'ASC')
++    ->execute();
++
++  while ($url_alias = $result_url_alias->fetchObject()) {
++    $url_aliases[$url_alias->alias] = $url_alias->alias;
++  }
++
++  return $url_aliases;
++}
++
++/**
++ * Get redirects which points to the given paths.
++ *
++ * @param array $paths
++ *   Paths to search for alternate paths from.
++ *
++ * @return array
++ *   Array of paths data, indexed by their path.
++ */
++function expire_get_redirects_by_paths($paths) {
++  $redirects = array();
++
++  if (!module_exists('redirect')) {
++    return $paths;
++  }
++
++  $result_redirect = db_select('redirect', 'rd')
++    ->fields('rd')
++    ->condition('redirect', $paths, 'IN')
++    ->orderBy('rid', 'ASC')
++    ->execute();
++
++  while ($redirect = $result_redirect->fetchObject()) {
++    $redirects[$redirect->source] = $redirect->source;
++  }
++
++  return $redirects;
++}
++
++/**
++ * Implements hook_expire_cache_alter().
++ *
++ * @param array &$paths
++ *  Paths from module expire queued to be expired.
++ */
++function expire_expire_cache_alter(&$paths) {
++  if (is_array($paths)) {
++    // Filter unwanted paths.
++    $paths = array_filter($paths, '_expire_removed_unwanted_paths');
++  }
++}
++
++/**
++ * Filter unwanted paths, which was never accessible to anonymous users anyway.
++ *
++ * @param string $path
++ *   The path we need to check.
++ *
++ * @return boolean
++ *   A boolean indicating if the path is to be filtered out or not.
++ */
++function _expire_removed_unwanted_paths($path) {
++  // Filter out any "admin", "node/add" and "import" pages. There was a huge
++  // number of these paths amongst the actual paths needed to be expired.
++  return !(strpos($path, 'admin') === 0 || strpos($path, 'node/add') === 0 || strpos($path, 'import') === 0);
++}
++
++/**
++ * Register all expired urls in request.
++ *
++ * These urls are then accessed in the shutdown function, when the actual
++ * expiration is performed.
++ *
++ * @param array $urls
++ *   Urls to expire.
++ * @param bool $reset
++ *   Leave the static cached urls empty if TRUE is given.
++ *
++ * @return array
++ *   An array of all the urls to expire from current request.
++ */
++function _expire_static_urls($urls = array(), $reset = FALSE) {
++  static $urls_to_expire_static = array();
++
++  $urls_to_expire = $urls_to_expire_static;
++
++  foreach($urls as $url) {
++    $urls_to_expire[$url] = $url;
++  }
++
++  if ($reset) {
++    $urls_to_expire_static = array();
++  }
++  else {
++    $urls_to_expire_static += $urls_to_expire;
++  }
++
++  return $urls_to_expire;
++}
++
++/**
++ * Shutdown function which expires the urls.
++ *
++ * All the urls are expired at the very end of the request. This is pushed to
++ * the end to make sure, that all data needed to be stored has been stored and
++ * to avoid flooding the module which handles the expire urls.
++ */
++function expire_shutdown_function() {
++  // Register the actual expire function to push the functionality to the end
++  // of the shutdown queue. This is f.ex. needed when working with the shutdown
++  // patched version of workbench_moderation.
++  drupal_register_shutdown_function('expire_expire_urls');
++}
++
++/**
++ * Expire all the urls that are stored in the static variable.
++ *
++ * @param bool $reset
++ *   If set to TRUE, it will reset the static cached urls each time it is
++ *   called. This is useful when it is called from the command line where the
++ *   shutdown functionality is not in effect.
++ */
++function expire_expire_urls($reset = FALSE) {
++  $urls = _expire_static_urls(array(), $reset);
++
++  // Allow other modules to alter the final processed list of complete urls.
++  drupal_alter('expire_cache_urls', $urls);
++
+   // hook_expire_cache
+   $modules = module_implements('expire_cache');
+   foreach ($modules as $module) {
+     module_invoke($module, 'expire_cache', $urls);
+   }
+-  watchdog('expire', 'Input: !paths <br /> Output: !urls <br /> Modules Using hook_expire_cache(): !modules', array(
+-    '!paths' => expire_print_r($paths),
++
++  watchdog('expire', 'Output: !urls <br /> Modules Using hook_expire_cache(): !modules', array(
+     '!urls' => expire_print_r($urls),
+     '!modules' => expire_print_r($modules),
+   ));
+-  return count($urls);
+ }
+ 
+ /**

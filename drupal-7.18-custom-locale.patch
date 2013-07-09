@@ -1,0 +1,26 @@
+diff --git a/includes/bootstrap.inc b/includes/bootstrap.inc
+index 1b48217..eb742d4 100644
+--- a/includes/bootstrap.inc
++++ b/includes/bootstrap.inc
+@@ -1451,6 +1451,10 @@ function drupal_unpack($obj, $field = 'data') {
+ function t($string, array $args = array(), array $options = array()) {
+   global $language;
+   static $custom_strings;
++  static $custom_locale;
++  if (!isset($custom_locale)) {
++    $custom_locale = variable_get('custom_locale', FALSE);
++  }
+ 
+   // Merge in default.
+   if (empty($options['langcode'])) {
+@@ -1471,6 +1475,10 @@ function t($string, array $args = array(), array $options = array()) {
+   if (isset($custom_strings[$options['langcode']][$options['context']][$string])) {
+     $string = $custom_strings[$options['langcode']][$options['context']][$string];
+   }
++  // Translate with custom locale
++  elseif ($options['langcode'] != 'en' && $custom_locale && function_exists($custom_locale)) {
++    $string = $custom_locale($string, $options['context'], $options['langcode']);
++  }
+   // Translate with locale module if enabled.
+   elseif ($options['langcode'] != 'en' && function_exists('locale')) {
+     $string = locale($string, $options['context'], $options['langcode']);
