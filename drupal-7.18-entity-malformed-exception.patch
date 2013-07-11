@@ -1,0 +1,13 @@
+diff --git a/includes/common.inc b/includes/common.inc
+index 8276576..57febde 100644
+--- a/includes/common.inc
++++ b/includes/common.inc
+@@ -7629,7 +7629,7 @@ function entity_extract_ids($entity_type, $entity) {
+ 
+   if (!empty($info['entity keys']['bundle'])) {
+     // Explicitly fail for malformed entities missing the bundle property.
+-    if (!isset($entity->{$info['entity keys']['bundle']}) || $entity->{$info['entity keys']['bundle']} === '') {
++    if (!isset($entity->{$info['entity keys']['bundle']})) {
+       throw new EntityMalformedException(t('Missing bundle property on entity of type @entity_type.', array('@entity_type' => $entity_type)));
+     }
+     $bundle = $entity->{$info['entity keys']['bundle']};
