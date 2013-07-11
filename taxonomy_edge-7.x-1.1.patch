@@ -1,0 +1,40 @@
+diff --git a/taxonomy_edge.module b/taxonomy_edge.module
+index ee8c30d..718755c 100755
+--- a/taxonomy_edge.module
++++ b/taxonomy_edge.module
+@@ -308,18 +308,23 @@ function _taxonomy_edge_taxonomy_term_update($term) {
+     WHERE te1.parent = :tid AND te2.distance > te1.distance
+   ", array(':tid' => $tid));
+ 
+-  // Delete those edges
+-  // No way of doing a joined delete that works on both mysql and pgsql
+-  // @todo Fix this by adding a unique id per row in term_edge, so a sub-select can be used?
+-  $using = "{$tablename}";
+-  $db_type = Database::getConnection('default')->databaseType();
+-  if ($db_type == 'mysql' || $db_type == 'mysqli') {
+-    $using .= ', {taxonomy_term_edge}';
+-  }
+-  db_query("
+-    DELETE FROM {taxonomy_term_edge}
+-    USING $using WHERE {taxonomy_term_edge}.tid = {$tablename}.tid AND {taxonomy_term_edge}.parent = {$tablename}.parent
+-  ");
++  try {
++    // Delete those edges
++    // No way of doing a joined delete that works on both mysql and pgsql
++    // @todo Fix this by adding a unique id per row in term_edge, so a sub-select can be used?
++    $using = "{$tablename}";
++    $db_type = Database::getConnection('default')->databaseType();
++    if ($db_type == 'mysql' || $db_type == 'mysqli') {
++      $using .= ', {taxonomy_term_edge}';
++    }
++    db_query("
++      DELETE FROM {taxonomy_term_edge}
++      USING $using WHERE {taxonomy_term_edge}.tid = {$tablename}.tid AND {taxonomy_term_edge}.parent = {$tablename}.parent
++    ");
++  }
++  catch (Exception $e) {
++    // Do nothing
++  }
+ 
+   if ($parents) {
+     // Insert new and correct edges
