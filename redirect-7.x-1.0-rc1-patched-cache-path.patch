@@ -1,0 +1,13 @@
+diff --git a/redirect.module b/redirect.module
+index 64367e6..46c004a 100755
+--- a/redirect.module
++++ b/redirect.module
+@@ -262,6 +262,8 @@ function redirect_url_inbound_alter(&$path, $original_path, $path_language) {
+   }
+ 
+   $alias = drupal_get_path_alias($path, $path_language);
++  $cache_path = &drupal_static('drupal_lookup_path');
++  $cache_path['first_call'] = TRUE;
+ 
+   if ($alias != $path && $alias != $original_path) {
+     return redirect_redirect((object)array('redirect' => $alias, 'type' => 'global'));
