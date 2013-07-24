@@ -1,0 +1,20 @@
+diff --git a/js/drupal.aloha.js b/js/drupal.aloha.js
+index c159ae3..92d3501 100644
+--- a/js/drupal.aloha.js
++++ b/js/drupal.aloha.js
+@@ -86,6 +86,7 @@ Drupal.aloha = {
+    *   - class: Class to add to the editable while this format is active.
+    */
+   attach: function ($editable, format) {
++    $editable.val($('<div/>').text($editable.val()).html());
+     $editable.addClass('aloha-attached');
+     Drupal.aloha._ensureID($editable);
+     Drupal.aloha._ensureNonFormElement($editable);
+@@ -143,6 +144,7 @@ Drupal.aloha = {
+     Drupal.aloha._restoreNonFormElement($editable);
+     Drupal.aloha._restoreID($editable);
+ 
++    $editable.val($('<div/>').html(content).text());
+     $editable.removeClass('aloha-attached');
+   },
+ 
