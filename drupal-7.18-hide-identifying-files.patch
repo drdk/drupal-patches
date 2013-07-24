@@ -1,0 +1,15 @@
+diff --git a/.htaccess b/.htaccess
+index 246edc2..07dd2e9 100644
+--- a/.htaccess
++++ b/.htaccess
+@@ -97,6 +97,10 @@ DirectoryIndex index.php index.html index.htm
+   # uncomment the following line:
+   # RewriteBase /
+ 
++  # Deny access to default installation, help, and configuration files.
++  RewriteRule [A-Z](\.[a-z]*)?\.txt$ - [R=404,L]
++  RewriteRule ^(authorize|cron|install|update|xmlrpc)\.php$|settings.php$|^web.config$ - [R=404,L]
++
+   # Pass all requests not referring directly to files in the filesystem to
+   # index.php. Clean URLs are handled in drupal_environment_initialize().
+   RewriteCond %{REQUEST_FILENAME} !-f
