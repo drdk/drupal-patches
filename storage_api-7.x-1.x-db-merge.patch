@@ -1,0 +1,25 @@
+diff --git a/container.inc b/container.inc
+index c003316..36f5b94 100644
+--- a/container.inc
++++ b/container.inc
+@@ -166,14 +166,13 @@ abstract class StorageContainer {
+ 
+     $reference = $this->serviceInstanceCreate($storage, $uri);
+ 
+-    $instance = array(
+-      'container_id' => $this->container_id,
+-      'file_id' => $storage->file_id,
+-      'reference' => $reference,
+-    );
++    db_merge('storage_instance')
++      ->key(array('container_id' => $this->container_id, 'reference' => $reference))
++      ->fields(array(
++        'file_id' => $storage->file_id,
++      ))
++      ->execute();
+ 
+-    drupal_write_record('storage_instance', $instance);
+-    
+     $storage->flushServingContainer();
+     
+     $message = 'File instance created: ' . $storage->filename . '<br />';
