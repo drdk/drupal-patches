@@ -1,0 +1,30 @@
+diff --git a/container.inc b/container.inc
+index c003316..1cfd6f8 100644
+--- a/container.inc
++++ b/container.inc
+@@ -172,8 +172,23 @@ abstract class StorageContainer {
+       'reference' => $reference,
+     );
+ 
+-    drupal_write_record('storage_instance', $instance);
+-    
++    $result = db_select('storage_instance', 'si')
++      ->fields('si', array('file_id'))
++      ->condition('container_id', $this->container_id)
++      ->condition('reference', $reference)
++      ->range(0, 1)
++      ->execute()
++      ->rowCount();
++
++    // Set primary keys to update an existing row to avoid throwing an
++    // exception when trying to blindly insert a row.
++    $primary_keys = array();
++    if ($result) {
++      $primary_keys = array('container_id', 'reference');
++    }
++
++    drupal_write_record('storage_instance', $instance, $primary_keys);
++
+     $storage->flushServingContainer();
+     
+     $message = 'File instance created: ' . $storage->filename . '<br />';
