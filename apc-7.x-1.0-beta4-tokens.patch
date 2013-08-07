@@ -1,0 +1,74 @@
+diff --git a/drupal_apc_cache.inc b/drupal_apc_cache.inc
+index 2f7e330..ed4de92 100644
+--- a/drupal_apc_cache.inc
++++ b/drupal_apc_cache.inc
+@@ -38,6 +38,38 @@ class DrupalAPCCache implements DrupalCacheInterface {
+   protected $prefix;
+ 
+   /**
++   * Get the current valid token for this bin.
++   *
++   * @return string
++   *   The token for this bin.
++   */
++  function getToken() {
++    $token = &drupal_static('apc_cache_token');
++    if (!isset($token)) {
++      if ($cache = cache_get('apc_cache_token_' . $this->bin)) {
++        $token = $cache->data;
++      }
++      else {
++        $token = $this->setToken();
++      }
++    }
++    return $token;
++  }
++
++  /**
++   * Set a new token for this bin.
++   *
++   * @return string
++   *   The new token for this bin.
++   */
++  function setToken() {
++    $token = &drupal_static('apc_cache_token');
++    $token = uniqid('apc_cache', TRUE);
++    cache_set('apc_cache_token_' . $this->bin, $token);
++    return $token;
++  }
++
++  /**
+    * Get prefix for bin using the configuration.
+    *
+    * @param string $bin
+@@ -160,6 +192,11 @@ class DrupalAPCCache implements DrupalCacheInterface {
+       return FALSE;
+     }
+ 
++    // If token has changed, then this cache entry is invalid.
++    if ($cache->token !== $this->getToken()) {
++      return FALSE;
++    }
++
+     return $cache;
+   }
+ 
+@@ -197,6 +234,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
+     $cache->created = REQUEST_TIME;
+     $cache->expire = $expire;
+     $cache->headers = isset($headers) ? $headers : NULL;
++    $cache->token = $this->getToken();
+ 
+     $cache->data = $data;
+ 
+@@ -244,6 +282,10 @@ class DrupalAPCCache implements DrupalCacheInterface {
+     foreach ($iterator as $key => $data) {
+       apc_delete($key);
+      }
++
++    // If anything is deleted in the bin, it must be invalidated by setting
++    // a new token.
++    $this->setToken();
+    }
+ 
+   /**
