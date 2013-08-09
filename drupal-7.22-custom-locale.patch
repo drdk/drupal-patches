@@ -10,9 +10,8 @@ index b60c531..1417a3e 100644
 +  static $custom_locale;
 +  if (!isset($custom_locale)) {
 +    $custom_locale = variable_get('custom_locale', FALSE);
-+    $custom_locale = $custom_locale && function_exists($custom_locale) ? $custom_locale : FALSE;
 +  }
-+  if ($custom_locale) {
++  if ($custom_locale && function_exists($custom_locale)) {
 +    return $custom_locale($string, $context, $langcode);
 +  }
 +
