@@ -1,0 +1,21 @@
+diff --git a/modules/locale/locale.module b/modules/locale/locale.module
+index b60c531..1417a3e 100644
+--- a/modules/locale/locale.module
++++ b/modules/locale/locale.module
+@@ -666,6 +666,16 @@ function locale_modules_disabled($modules) {
+  *   Language code to use for the lookup.
+  */
+ function locale($string = NULL, $context = NULL, $langcode = NULL) {
++  // Support for custom locale function.
++  static $custom_locale;
++  if (!isset($custom_locale)) {
++    $custom_locale = variable_get('custom_locale', FALSE);
++    $custom_locale = $custom_locale && function_exists($custom_locale) ? $custom_locale : FALSE;
++  }
++  if ($custom_locale) {
++    return $custom_locale($string, $context, $langcode);
++  }
++
+   global $language;
+ 
+   // Use the advanced drupal_static() pattern, since this is called very often.
