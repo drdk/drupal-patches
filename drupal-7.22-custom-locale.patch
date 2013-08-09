@@ -2,7 +2,7 @@ diff --git a/modules/locale/locale.module b/modules/locale/locale.module
 index b60c531..1417a3e 100644
 --- a/modules/locale/locale.module
 +++ b/modules/locale/locale.module
-@@ -666,6 +666,16 @@ function locale_modules_disabled($modules) {
+@@ -666,6 +666,15 @@ function locale_modules_disabled($modules) {
   *   Language code to use for the lookup.
   */
  function locale($string = NULL, $context = NULL, $langcode = NULL) {
