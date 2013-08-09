@@ -2,7 +2,7 @@ diff --git a/includes/database/mysql/database.inc b/includes/database/mysql/data
 index 7ad019e..e25625b 100644
 --- a/includes/database/mysql/database.inc
 +++ b/includes/database/mysql/database.inc
-@@ -196,6 +196,30 @@ class DatabaseConnection_mysql extends DatabaseConnection {
+@@ -196,6 +196,34 @@ class DatabaseConnection_mysql extends DatabaseConnection {
    }
  }
  
@@ -10,15 +10,19 @@ index 7ad019e..e25625b 100644
 + * DatabaseTransaction class for MySQL supporting transactional cache wrapper
 + */
 +class DatabaseTransaction_mysql extends DatabaseTransaction {
++  static $inProgress = FALSE;
++
 +  public function __destruct() {
 +    // If we rolled back then the transaction would have already been popped.
 +    if (!$this->rolledBack) {
 +      $this->connection->popTransaction($this->name);
 +      
 +      if (is_callable(array('TransactionalCache', 'flushBuffers'))) {
-+        if($this->connection->transactionDepth() <= 1) {
++        if(!self::$inProgress && $this->connection->transactionDepth() <= 1) {
++          self::$inProgress = TRUE;
 +          // Now that the transaction has been committed, we want to flush the cache buffer
 +          TransactionalCache::flushBuffers();
++          self::$inProgress = FALSE;
 +        }
 +      }
 +    }
