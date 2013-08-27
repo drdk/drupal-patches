@@ -1,0 +1,15 @@
+diff --git a/contrib/search_api_views/includes/query.inc b/contrib/search_api_views/includes/query.inc
+index c79807e..f2d6b92 100644
+--- a/contrib/search_api_views/includes/query.inc
++++ b/contrib/search_api_views/includes/query.inc
+@@ -235,6 +235,10 @@ class SearchApiViewsQuery extends views_plugin_query {
+     $view->init_pager();
+     $this->pager->query();
+ 
++    if (empty($this->query)) {
++      return;
++    }
++
+     // Views passes sometimes NULL and sometimes the integer 0 for "All" in a
+     // pager. If set to 0 items, a string "0" is passed. Therefore, we unset
+     // the limit if an empty value OTHER than a string "0" was passed.
