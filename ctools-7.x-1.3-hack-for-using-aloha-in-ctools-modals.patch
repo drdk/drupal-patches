@@ -1,0 +1,16 @@
+diff --git a/js/modal.js b/js/modal.js
+index 1376d82..89662fb 100644
+--- a/js/modal.js
++++ b/js/modal.js
+@@ -451,8 +451,10 @@
+       // Close the content
+       modalContent.hide()[animation](speed);
+ 
++      setTimeout(function () {
+       // Remove the content
+-      $('#modalContent').remove();
++        $('#modalContent').remove();
++      }, 250);
+       $('#modalBackdrop').remove();
+     };
+ 
