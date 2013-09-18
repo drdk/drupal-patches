@@ -1,0 +1,15 @@
+--- a/modules/simpletest/drupal_web_test_case.php  2013-09-04 13:31:02.000000000 +0200
++++ b/modules/simpletest/drupal_web_test_case.php	2013-09-04 13:31:08.000000000 +0200
+@@ -1763,6 +1763,12 @@
+       // not overwritten by Curl.
+       $curl_options[CURLOPT_HTTPHEADER][] = 'Expect:';
+     }
++
++    // Provide alter possibility for working around nginx probem.
++    if (function_exists('simpletest_curl_alter')) {
++      simpletest_curl_alter($curl_options);
++    }
++
+     curl_setopt_array($this->curlHandle, $this->additionalCurlOptions + $curl_options);
+ 
+     if (!$redirect) {

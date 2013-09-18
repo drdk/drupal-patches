@@ -1,0 +1,15 @@
+diff --git a/js/drupal.aloha.js b/js/drupal.aloha.js
+index b793142..beae428 100644
+--- a/js/drupal.aloha.js
++++ b/js/drupal.aloha.js
+@@ -137,6 +137,10 @@ Drupal.aloha = {
+     var id = $alohaEditable.attr('id');
+ 
+     var content = Aloha.getEditableById(id).getContents();
++    // Avoid scrolling on submit by ensuring that the textarea is the
++    // same height as the Aloha editor.
++    $editable.height($alohaEditable.height());
++
+     Aloha.jQuery('#' + id)
+       .unbind('aloha-smart-content-changed.aloha')
+       .mahalo();
