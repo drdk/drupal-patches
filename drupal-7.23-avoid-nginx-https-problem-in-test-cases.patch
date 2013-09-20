@@ -1,6 +1,18 @@
---- a/modules/simpletest/drupal_web_test_case.php  2013-09-04 13:31:02.000000000 +0200
-+++ b/modules/simpletest/drupal_web_test_case.php	2013-09-04 13:31:08.000000000 +0200
-@@ -1763,6 +1763,12 @@
+diff --git a/modules/simpletest/drupal_web_test_case.php b/modules/simpletest/drupal_web_test_case.php
+index 0853c7d..b00357d 100644
+--- a/modules/simpletest/drupal_web_test_case.php
++++ b/modules/simpletest/drupal_web_test_case.php
+@@ -1748,8 +1748,8 @@ class DrupalWebTestCase extends DrupalTestCase {
+     // to reject the request citing "400 - Bad Request". To prevent
+     // this, we strip the fragment from the request.
+     // TODO: Remove this for Drupal 8, since fixed in curl 7.20.0.
++    $original_url = $curl_options[CURLOPT_URL];
+     if (!empty($curl_options[CURLOPT_URL]) && strpos($curl_options[CURLOPT_URL], '#')) {
+-      $original_url = $curl_options[CURLOPT_URL];
+       $curl_options[CURLOPT_URL] = strtok($curl_options[CURLOPT_URL], '#');
+     }
+ 
+@@ -1763,6 +1763,12 @@ class DrupalWebTestCase extends DrupalTestCase {
        // not overwritten by Curl.
        $curl_options[CURLOPT_HTTPHEADER][] = 'Expect:';
      }
