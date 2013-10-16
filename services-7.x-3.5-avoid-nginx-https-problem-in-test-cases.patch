@@ -1,0 +1,26 @@
+diff --git a/tests/services.test b/tests/services.test
+index 01de5b5..ab54b87 100644
+--- a/tests/services.test
++++ b/tests/services.test
+@@ -763,8 +763,8 @@ class ServicesWebTestCase extends DrupalWebTestCase {
+     // to reject the request citing "400 - Bad Request". To prevent
+     // this, we strip the fragment from the request.
+     // TODO: Remove this for Drupal 8, since fixed in curl 7.20.0.
++    $original_url = $curl_options[CURLOPT_URL];
+     if (!empty($curl_options[CURLOPT_URL]) && strpos($curl_options[CURLOPT_URL], '#')) {
+-      $original_url = $curl_options[CURLOPT_URL];
+       $curl_options[CURLOPT_URL] = strtok($curl_options[CURLOPT_URL], '#');
+     }
+ 
+@@ -779,6 +779,11 @@ class ServicesWebTestCase extends DrupalWebTestCase {
+       $curl_options[CURLOPT_HTTPHEADER][] = 'Expect:';
+     }
+ 
++    // Provide alter possibility for working around nginx probem.
++    if (function_exists('simpletest_curl_alter')) {
++      simpletest_curl_alter($curl_options);
++    }
++
+     curl_setopt_array($this->curlHandle, $this->additionalCurlOptions + $curl_options);
+ 
+     if (!$redirect) {
