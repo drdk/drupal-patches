@@ -1,0 +1,22 @@
+diff --git a/service.inc b/service.inc
+index 8bc1e4b..727e7d4 100644
+--- a/service.inc
++++ b/service.inc
+@@ -1204,13 +1204,16 @@ class SearchApiSolrService extends SearchApiAbstractService {
+       $this->setRequestHandler($this->request_handler, $call_args);
+     }
+ 
++    // Retrieve http method from server options.
++    $http_method = (!empty($this->options['http_method'])) ? $this->options['http_method'] : Apache_Solr_Service::METHOD_GET;
++
+     for ($i = 0; $i < 2; ++$i) {
+       try {
+         // Send search request
+         $this->connect();
+         drupal_alter('search_api_solr_query', $call_args, $query);
+         $this->preQuery($call_args, $query);
+-        $response = $this->solr->search($keys, $offset, $limit, $params);
++        $response = $this->solr->search($keys, $offset, $limit, $params, $http_method);
+ 
+         if ($response->getHttpStatus() != 200) {
+           watchdog('search_api_solr', 'The Solr server responded with status code @status: @msg.',
