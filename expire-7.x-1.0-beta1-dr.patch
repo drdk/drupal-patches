@@ -164,7 +164,7 @@ index 6633729..89c056c
 +function expire_get_url_aliases_by_paths($paths) {
 +  $url_aliases = array();
 +
-+  if (!module_exists('path')) {
++  if (!module_exists('path') || empty($paths)) {
 +    return $paths;
 +  }
 +
@@ -194,7 +194,7 @@ index 6633729..89c056c
 +function expire_get_redirects_by_paths($paths) {
 +  $redirects = array();
 +
-+  if (!module_exists('redirect')) {
++  if (!module_exists('redirect') || empty($paths)) {
 +    return $paths;
 +  }
 +
