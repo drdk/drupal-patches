@@ -11,3 +11,16 @@ index f6ffea5..3c99165 100644
  
  /**
   * Error reporting level: display no errors.
+diff --git a/modules/system/system.install b/modules/system/system.install
+index 43c7383..3334347 100644
+--- a/modules/system/system.install
++++ b/modules/system/system.install
+@@ -224,7 +224,7 @@ function system_requirements($phase) {
+       }
+ 
+       $requirements['php_memory_limit']['description'] = $description . ' ' . $t('See the <a href="@url">Drupal requirements</a> for more information.', array('@url' => 'http://drupal.org/requirements'));
+-      $requirements['php_memory_limit']['severity'] = REQUIREMENT_WARNING;
++      $requirements['php_memory_limit']['severity'] = REQUIREMENT_ERROR;
+     }
+   }
+ 
