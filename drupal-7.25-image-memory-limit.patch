@@ -1,0 +1,33 @@
+From a846e5fd3b9f93596f096c6c4844b49688c522a4 Mon Sep 17 00:00:00 2001
+From: arnested <arnested@245635.no-reply.drupal.org>
+Date: Tue, 4 Mar 2014 14:31:15 +0100
+Subject: [PATCH] Image operations may require a lot of memory.
+
+Raise memory_limit to the value set in image_TOOLKIT_memory_limit.
+
+Signed-off-by: arnested <arnested@245635.no-reply.drupal.org>
+---
+ includes/image.inc | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/includes/image.inc b/includes/image.inc
+index e30a338..a8186df 100644
+--- a/includes/image.inc
++++ b/includes/image.inc
+@@ -93,6 +93,13 @@ function image_get_toolkit() {
+ function image_toolkit_invoke($method, stdClass $image, array $params = array()) {
+   $function = 'image_' . $image->toolkit . '_' . $method;
+   if (function_exists($function)) {
++    // Image operations may require a lot of memory. Raise memory_limit to the
++    // value set in image_TOOLKIT_memory_limit.
++    $memory_limit = variable_get('image_' . $image->toolkit . '_memory_limit', FALSE);
++    if ($memory_limit) {
++      ini_set('memory_limit', $memory_limit);
++    }
++
+     array_unshift($params, $image);
+     return call_user_func_array($function, $params);
+   }
+-- 
+Arne Jørgensen
+
