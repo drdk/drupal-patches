@@ -1,6 +1,6 @@
 --- .htaccess.orig	2014-04-28 08:51:34.000000000 +0200
-+++ .htaccess	2014-04-28 09:48:10.000000000 +0200
-@@ -63,6 +63,10 @@
++++ .htaccess	2014-04-28 10:05:40.000000000 +0200
+@@ -63,6 +63,19 @@
    RewriteCond %{HTTPS} on
    RewriteRule ^ - [E=protossl:s]
  
@@ -8,22 +8,15 @@
 +  RewriteCond %{HTTP:X-Forwarded-Proto} =https
 +  RewriteRule ^ - [E=protossl:s]
 +
-   # Make sure Authorization HTTP header is available to PHP
-   # even when running as CGI or FastCGI.
-   RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-@@ -113,6 +117,15 @@
-   RewriteRule [A-Z](\.[a-z]*)?\.txt$ - [R=404,L]
-   RewriteRule ^(authorize|install|update|xmlrpc)\.php$|settings.php$|^web.config$ - [R=404,L]
- 
 +  # Rewrite drd7stg.prod.acquia-sites.com,
-+  # drd7devX.prod.acquia-sites.com, etc. hostnames to the
-+  # *-acquia.dr.dk equivalent.
++  # drd7XX.prod.acquia-sites.com, etc. hostnames to the *-acquia.dr.dk
++  # equivalent.
 +  RewriteCond %{HTTP_HOST} ^drd7stg\.prod\.acquia-sites\.com
 +  RewriteRule ^(.*)$ http%{ENV:protossl}://stage-acquia.dr.dk/$1 [R=301,L]
 +
 +  RewriteCond %{HTTP_HOST} ^drd7(.+)\.prod\.acquia-sites\.com
 +  RewriteRule ^(.*)$ http%{ENV:protossl}://%1-acquia.dr.dk/$1 [R=301,L]
 +
-   # Pass all requests not referring directly to files in the filesystem to
-   # index.php. Clean URLs are handled in drupal_environment_initialize().
-   RewriteCond %{REQUEST_FILENAME} !-f
+   # Make sure Authorization HTTP header is available to PHP
+   # even when running as CGI or FastCGI.
+   RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
