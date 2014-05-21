@@ -1,0 +1,24 @@
+diff --git a/purge.inc b/purge.inc
+index 5194851..df9ac09 100644
+--- a/purge.inc
++++ b/purge.inc
+@@ -145,9 +145,15 @@ function purge_issue_requests_curl($purges) {
+       $select_result = curl_multi_select($curl_purges);
+     }
+     if ($multi_result != CURLM_OK || $select_result == -1) {
+-      // @TODO: error handling. Something truly awkward happened.
+-      ob_end_clean();
+-      return FALSE;
++      // Try 3 times with a 10ms delay before bailing out.
++      static $cnt = 0;
++      $cnt++;
++      if ($cnt > 3) {
++        // @TODO: error handling. Something truly awkward happened.
++        ob_end_clean();
++        return FALSE;
++      }
++      usleep(10000);
+     }
+   } while ($select_result != -1 && $active && $multi_result == CURLM_OK);
+   ob_end_clean();
+   
