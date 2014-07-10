@@ -1,0 +1,122 @@
+diff --git a/oembedcore.install b/oembedcore.install
+index 8adf526..b5b794a 100644
+--- a/oembedcore.install
++++ b/oembedcore.install
+@@ -20,6 +20,12 @@ function _oembedcore_provider_schema_1() {
+     'export' => array(
+       'identifier'      => 'provider',
+       'primary key'     => 'pid',
++      'api' => array(
++        'owner' => 'oembedcore',
++        'api' => 'oembedcore',
++        'minimum_version' => 1,
++        'current_version' => 1,
++      ),
+     ),
+     'fields' => array(
+       'pid' => array(
+diff --git a/oembedcore.module b/oembedcore.module
+index 105e166..2c9bff9 100644
+--- a/oembedcore.module
++++ b/oembedcore.module
+@@ -116,6 +116,16 @@ function oembedcore_theme() {
+ }
+ 
+ /**
++ * Implements hook_ctools_plugin_api().
++ */
++function oembedcore_ctools_plugin_api() {
++  list($module, $api) = func_get_args();
++  if ($module == "oembedcore" && $api == "oembedcore") {
++    return array("version" => "1");
++  }
++}
++
++/**
+  * Implementation of hook_default_oembedcore_provider()
+  */
+ function oembedcore_default_oembedcore_provider() {
+@@ -123,6 +133,7 @@ function oembedcore_default_oembedcore_provider() {
+ 
+   $provider = new stdClass;
+   $provider->disabled = FALSE; /* Edit this to true to make a default provider disabled initially */
++  $provider->api_version = 1;
+   $provider->name = 'flickr';
+   $provider->title = 'Flickr';
+   $provider->endpoint = 'http://www.flickr.com/services/oembed/';
+@@ -133,6 +144,7 @@ http://flic.kr/*';
+ 
+   $provider = new stdClass;
+   $provider->disabled = FALSE; /* Edit this to true to make a default provider disabled initially */
++  $provider->api_version = 1;
+   $provider->name = 'qik';
+   $provider->title = 'Qik';
+   $provider->endpoint = 'http://qik.com/api/oembed.json';
+@@ -143,6 +155,7 @@ http://qik.ly/*';
+ 
+   $provider = new stdClass;
+   $provider->disabled = FALSE; /* Edit this to true to make a default provider disabled initially */
++  $provider->api_version = 1;
+   $provider->name = 'revision3';
+   $provider->title = 'Revision3';
+   $provider->endpoint = 'http://revision3.com/api/oembed/';
+@@ -152,6 +165,7 @@ http://revision3.com/*';
+ 
+   $provider = new stdClass;
+   $provider->disabled = FALSE; /* Edit this to true to make a default provider disabled initially */
++  $provider->api_version = 1;
+   $provider->name = 'soundcloud';
+   $provider->title = 'SoundCloud';
+   $provider->endpoint = 'http://soundcloud.com/oembed';
+@@ -164,9 +178,10 @@ http://snd.sc/*';
+ 
+   $provider = new stdClass;
+   $provider->disabled = FALSE; /* Edit this to true to make a default provider disabled initially */
++  $provider->api_version = 1;
+   $provider->name = 'twitter';
+   $provider->title = 'Twitter';
+-  $provider->endpoint = 'https://api.twitter.com/1/statuses/oembed.json';
++  $provider->endpoint = 'https://api.twitter.com/1.1/statuses/oembed.json';
+   $provider->scheme = 'http://twitter.com/*/status/*
+ http://twitter.com/*/statuses/*
+ http://www.twitter.com/*/status/*
+@@ -183,6 +198,7 @@ https://mobile.twitter.com/*/statuses/*';
+ 
+   $provider = new stdClass;
+   $provider->disabled = FALSE; /* Edit this to true to make a default provider disabled initially */
++  $provider->api_version = 1;
+   $provider->name = 'viddler';
+   $provider->title = 'Viddler';
+   $provider->endpoint = 'http://lab.viddler.com/services/oembed/';
+@@ -191,21 +207,25 @@ https://mobile.twitter.com/*/statuses/*';
+ 
+   $provider = new stdClass;
+   $provider->disabled = FALSE; /* Edit this to true to make a default provider disabled initially */
++  $provider->api_version = 1;
+   $provider->name = 'vimeo';
+   $provider->title = 'Vimeo';
+-  $provider->endpoint = 'http://vimeo.com/api/oembed.json';
+-  $provider->scheme = 'http://www.vimeo.com/groups/*/videos/*
+-http://www.vimeo.com/*
++  $provider->endpoint = 'https://vimeo.com/api/oembed.json';
++  $provider->scheme = 'http://vimeo.com/*
++http://vimeo.com/channels/*/*
+ http://vimeo.com/groups/*/videos/*
+-http://vimeo.com/*
+-http://vimeo.com/m/#/*';
++http://vimeo.com/m/*
++https://vimeo.com/*
++https://vimeo.com/channels/*/*
++https://vimeo.com/groups/*/videos/*';
+   $providers['vimeo'] = $provider;
+ 
+   $provider = new stdClass;
+   $provider->disabled = FALSE; /* Edit this to true to make a default provider disabled initially */
++  $provider->api_version = 1;
+   $provider->name = 'youtube';
+   $provider->title = 'YouTube';
+-  $provider->endpoint = 'http://www.youtube.com/oembed';
++  $provider->endpoint = 'https://www.youtube.com/oembed';
+   $provider->scheme = 'http://*.youtube.com/watch*
+ http://*.youtube.com/v/*
+ https://*.youtube.com/watch*
