@@ -1,0 +1,14 @@
+diff --git a/oembedcore.module b/oembedcore.module
+index 105e166..eb58985 100644
+--- a/oembedcore.module
++++ b/oembedcore.module
+@@ -391,7 +391,8 @@ function oembedcore_oembed_fetch($provider, $url, $matches, $attributes = array(
+       // Remote oEmbed endpoint request.
+       $attributes['url'] = $url;
+       $query = http_build_query($attributes, NULL, '&');
+-      $fetch_url = $provider['endpoint'] . '?' . $query;
++      $delimiter = (strpos($provider['endpoint'],'?') !== false) ? '&' : '?';
++      $fetch_url = $provider['endpoint'] . $delimiter . $query;
+ 
+       //TODO: Add alternative ways of fetching the content - like http client?
+       $response = drupal_http_request($fetch_url);

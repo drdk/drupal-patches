@@ -116,7 +116,7 @@ index 105e166..2c9bff9 100644
    $provider->name = 'youtube';
    $provider->title = 'YouTube';
 -  $provider->endpoint = 'http://www.youtube.com/oembed';
-+  $provider->endpoint = 'https://www.youtube.com/oembed';
++  $provider->endpoint = 'https://www.youtube.com/oembed?scheme=https';
    $provider->scheme = 'http://*.youtube.com/watch*
  http://*.youtube.com/v/*
  https://*.youtube.com/watch*
