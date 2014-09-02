@@ -27,7 +27,7 @@ index d38afa2..d9ab903 100644
 +  RewriteCond %{REQUEST_URI} ^/tjenester* [OR]
 +  RewriteCond %{REQUEST_URI} ^/mu* [OR]
 +  RewriteCond %{REQUEST_URI} ^/dr.sso.web*
-+  RewriteRule ^(.*)$ http%{ENV:protossl}://www.dr.dk/$1 [P,L]
++  RewriteRule ^(.*)$ http%{ENV:protossl}://www.dr.dk/%1/$1 [P,L]
 +
    # Make sure Authorization HTTP header is available to PHP
    # even when running as CGI or FastCGI.
