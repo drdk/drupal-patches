@@ -1,8 +1,6 @@
-diff --git a/.htaccess.orig b/.htaccess
-index d38afa2..d9ab903 100644
---- a/.htaccess.orig
-+++ b/.htaccess
-@@ -63,6 +63,29 @@ DirectoryIndex index.php index.html index.htm
+--- a/.htaccess	2014-04-28 08:51:34.000000000 +0200
++++ b/.htaccess	2014-04-28 10:05:40.000000000 +0200
+@@ -63,6 +63,19 @@
    RewriteCond %{HTTPS} on
    RewriteRule ^ - [E=protossl:s]
  
@@ -18,16 +16,6 @@ index d38afa2..d9ab903 100644
 +
 +  RewriteCond %{HTTP_HOST} ^drd7(.+)\.prod\.acquia-sites\.com
 +  RewriteRule ^(.*)$ http%{ENV:protossl}://%1-acquia.dr.dk/$1 [R=301,L]
-+
-+  # Rewrite /assets, /tjenester, /mu (and others) to www.dr.dk/[path]
-+  RewriteCond %{HTTP_HOST} ^(.+)acquia\.dr\.dk [OR]
-+  RewriteCond %{HTTP_HOST} ^loc(.*)\.dr\.dk
-+  RewriteCond %{REQUEST_URI} ^/assets* [OR]
-+  RewriteCond %{REQUEST_URI} ^/drdkTopbar* [OR]
-+  RewriteCond %{REQUEST_URI} ^/tjenester* [OR]
-+  RewriteCond %{REQUEST_URI} ^/mu* [OR]
-+  RewriteCond %{REQUEST_URI} ^/dr.sso.web*
-+  RewriteRule ^(.*)$ http%{ENV:protossl}://www.dr.dk/%1/$1 [P,L]
 +
    # Make sure Authorization HTTP header is available to PHP
    # even when running as CGI or FastCGI.
