@@ -1,0 +1,47 @@
+diff --git a/manualcrop.install b/manualcrop.install
+index 194c0cb..a569d0e 100644
+--- a/manualcrop.install
++++ b/manualcrop.install
+@@ -263,6 +263,7 @@ function manualcrop_update_7102(&$sandbox) {
+  * Update the image fields so the settings no longer contain the styles that
+  * weren't selected in the interface.
+  */
++/* Removed because it is killing the S3 references.
+ function manualcrop_update_7103(&$sandbox) {
+   foreach (field_info_fields() as $field_name => $field) {
+     // Only update image fields.
+@@ -292,11 +293,12 @@ function manualcrop_update_7103(&$sandbox) {
+ 
+   field_cache_clear();
+ }
+-
++*/
+ /**
+  * Remove unneeded image effect data and rename the "reusestyle" setting
+  * to "reuse_crop_style".
+  */
++/* Removed because it is killing the S3 references.
+ function manualcrop_update_7104(&$sandbox) {
+   require_once 'manualcrop.helpers.inc';
+ 
+@@ -324,7 +326,7 @@ function manualcrop_update_7104(&$sandbox) {
+     }
+   }
+ }
+-
++*/
+ /**
+  * Grant the "Crop images" pemission to all user roles.
+  */
+@@ -351,9 +353,11 @@ function manualcrop_update_7106(&$sandbox) {
+ /**
+  * Re-run update 7103 to remove all styles that weren't selected in the interface.
+  */
++/* Removed because it is killing the S3 references.
+ function manualcrop_update_7107(&$sandbox) {
+   manualcrop_update_7103($sandbox);
+ }
++*/
+ 
+ /**
+  * Add the vid field.
