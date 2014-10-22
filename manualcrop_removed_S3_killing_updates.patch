@@ -45,3 +45,17 @@ index 194c0cb..a569d0e 100644
  
  /**
   * Add the vid field.
+diff --git a/manualcrop.make b/manualcrop.make
+index abd56e1..50c3920 100644
+--- a/manualcrop.make
++++ b/manualcrop.make
+@@ -17,6 +17,6 @@ libraries[jquery.imagesloaded][download][url] = https://github.com/desandro/imag
+ libraries[jquery.imagesloaded][download][subtree] = imagesloaded-2.1.2
+ 
+ ; jQuery imgAreaSelect.
+-libraries[jquery.imgareaselect][download][type] = file
+-libraries[jquery.imgareaselect][download][url] = http://odyniec.net/projects/imgareaselect/jquery.imgareaselect-0.9.10.zip
+-libraries[jquery.imgareaselect][download][subtree] = jquery.imgareaselect-0.9.10
++;libraries[jquery.imgareaselect][download][type] = file
++;libraries[jquery.imgareaselect][download][url] = http://odyniec.net/projects/imgareaselect/jquery.imgareaselect-0.9.10.zip
++;libraries[jquery.imgareaselect][download][subtree] = jquery.imgareaselect-0.9.10
