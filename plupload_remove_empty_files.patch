@@ -1,0 +1,24 @@
+diff --git a/plupload.js b/plupload.js
+index 1769944..1a0c38b 100644
+--- a/plupload.js
++++ b/plupload.js
+@@ -75,6 +75,19 @@ Drupal.behaviors.plupload = {
+           }
+         }
+       }
++      if (undefined === pluploadSettings.init) {
++        pluploadSettings.init = {};
++      }
++
++      pluploadSettings.init.FilesAdded = function (up, files) {
++        var self = this;
++        $.each(files, function(index, file) {
++          if (file.size == 0) {
++            alert(Drupal.t("The file '@name' is corrupt and cannot be uploaded.", {"@name" : file.name}))
++            self.removeFile(file);
++          }
++        });
++      };
+       // Initialize Plupload for this element.
+       $this.pluploadQueue(pluploadSettings);
+ 
