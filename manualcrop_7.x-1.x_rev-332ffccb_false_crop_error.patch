@@ -1,0 +1,28 @@
+diff --git a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.module b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.module
+index aba9e0c..56cad1d 100644
+--- a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.module
++++ b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.module
+@@ -479,13 +479,16 @@ function manualcrop_croptool_validate($element, &$form_state) {
+                 }
+               }
+             }
+-
+-            // Invalid crop selection.
+-            $error_set = TRUE;
+-            form_set_error($element_key, t('The crop selection for %filename (@style image style) is invalid, please clear it or reselect.', array(
+-              '@style' => $clean_style_name,
+-              '%filename' => $image['filename']
+-            )));
++            // When loaded from the library, the width is not set on the image object
++            // thereby giving a false negative.
++            if ($image['width'] !== NULL) {
++              // Invalid crop selection.
++              $error_set = TRUE;
++              form_set_error($element_key, t('The crop selection for %filename (@style image style) is invalid, please clear it or reselect.', array(
++                '@style' => $clean_style_name,
++                '%filename' => $image['filename']
++              )));
++            }
+           }
+           elseif (in_array($style_name, $image['required_styles'], TRUE)) {
+             // Uncropped required style.
