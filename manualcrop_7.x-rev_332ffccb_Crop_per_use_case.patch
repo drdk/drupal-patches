@@ -1,0 +1,581 @@
+diff --git a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.admin.inc b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.admin.inc
+index ab4f40b..fb14ec0 100644
+--- a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.admin.inc
++++ b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.admin.inc
+@@ -24,6 +24,13 @@ function manualcrop_global_settings_form() {
+     '#default_value' => variable_get('manualcrop_skip_js_check', FALSE),
+   );
+ 
++  $form['manualcrop_crop_per_instance'] = array(
++    '#type' => 'checkbox',
++    '#title' => t('Enable crop per instance'),
++    '#description' => t('Allow a crop to be related to the referencing entity as well as the image'),
++    '#default_value' => variable_get('manualcrop_crop_per_instance', FALSE),
++  );
++
+   $form['#submit'] = array('manualcrop_global_settings_form_submit');
+ 
+   return system_settings_form($form);
+diff --git a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.css b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.css
+index 64d4449..e6ea3fc 100644
+--- a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.css
++++ b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.css
+@@ -186,7 +186,7 @@
+   color: #FF0000;
+ }
+ .manualcrop-style-cropped {
+-  color: #96CB00;
++  color: #CB6900;
+ }
+ /* Crop preview */
+ .manualcrop-preview-cropped {
+@@ -228,3 +228,6 @@
+   max-width: none;
+   max-height: none;
+ }
++.manualcrop-node-specific .manualcrop-style-cropped {
++  color: #0b5;
++}
+diff --git a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.helpers.inc b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.helpers.inc
+index 1290c0d..a3032ef 100644
+--- a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.helpers.inc
++++ b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.helpers.inc
+@@ -247,12 +247,33 @@ function manualcrop_croptool_process(&$form, &$form_state, &$element, $file, $se
+       );
+ 
+       // Get the crop selections for this file.
++      // Overrule selections if the current referencing entity is present.
+       $submitted = (isset($form_state['inline_entity_form']) ? FALSE : $form_state['submitted']);
+       if (!$submitted && !isset($value['manualcrop_selections'])) {
+         $value['manualcrop_selections'] = array();
+-        foreach (manualcrop_load_crop_selection($file->uri) as $data) {
+-          $value['manualcrop_selections'][$data->style_name] = $data->x . '|' . $data->y . '|' . $data->width . '|' . $data->height;
++        $type = empty($form_state['instance_info']['entity_type']) ? $element['#entity_type'] : $form_state['instance_info']['entity_type'];
++
++        $entity_id_extract = entity_extract_ids($type, $element['#entity']);
++
++        $reid = empty($form_state['instance_info']['entity_id']) ?
++          $entity_id_extract[0] :
++          $form_state['instance_info']['entity_id'];
++
++        $selections_temp = array();
++
++        // Because we can have several crops on a single image, it has to be double-iterated.
++        foreach (manualcrop_load_crop_selection($file->uri) as $data_list) {
++          foreach ($data_list as $data) {
++            if (($data->referencing_entity_type == $type) && ($data->referencing_entity_id == $reid)) {
++              $selections_temp[$data->style_name] = $data->x . '|' . $data->y . '|' . $data->width . '|' . $data->height;
++              $selections_temp['nodespecific'][] = $data->style_name;
++            }
++            elseif (empty($data->referencing_entity_type) && empty($selections_temp[$data->style_name])) {
++              $selections_temp[$data->style_name] = $data->x . '|' . $data->y . '|' . $data->width . '|' . $data->height;
++            }
++          }
+         }
++        $value['manualcrop_selections'] = $selections_temp;
+       }
+ 
+       // Add class to the wrapper.
+@@ -428,6 +449,35 @@ function _manualcrop_add_croptool(&$element, $value, &$form_state, $fid, $js_ide
+     $crop_type = 'overlay';
+   }
+ 
++  // If the crop by use instance is enabled, add hidden fields with information about the
++  // referencing entity.
++  if (variable_get('manualcrop_crop_per_instance', FALSE)) {
++
++    $entity_type = (!empty($form_state['instance_info']) && !empty($form_state['instance_info']['entity_type'])) ?
++      $form_state['instance_info']['entity_type'] :
++      $element['#entity_type'];
++
++    $entity_id = 0;
++
++    if (!empty($element['#entity'])) {
++      $entity_id_extract = entity_extract_ids($entity_type, $element['#entity']);
++      $entity_id = array_shift($entity_id_extract);
++    }
++    else {
++      $entity_id = $form_state['instance_info']['entity_id'];
++    }
++
++    $element['manualcrop_entity_type'] = array(
++      '#type' => 'hidden',
++      '#value' => $entity_type,
++    );
++
++    $element['manualcrop_entity_id'] = array(
++      '#type' => 'hidden',
++      '#value' => $entity_id,
++    );
++  }
++
+   // Add a css class
+   $element['#attributes']['class'][] = 'manualcrop-file-' . $fid . '-holder';
+ 
+@@ -480,14 +530,23 @@ function _manualcrop_add_croptool(&$element, $value, &$form_state, $fid, $js_ide
+       $prefix = '<span class="manualcrop-preview manualcrop-preview-' . $fid . ' manualcrop-preview-' . $fid . '-' . $style_name . '"><span class="manualcrop-preview-cropped"></span>';
+       $suffix = '</span>';
+ 
++      // DR specific. Get instance information. Use custom image theme style.
++      $nodespecific_crop = isset($value['manualcrop_selections']['nodespecific']) &&
++        in_array($style_name, $value['manualcrop_selections']['nodespecific']);
++
++      $per_instance_class = $nodespecific_crop ? 'manualcrop-node-specific' : '';
++
+       $style_options[$style_name] = theme('manualcrop_thumblist_image', array(
+         'style' => $style_clean_name,
+-        'image' => $prefix . theme('image_style', array(
++        'image' => $prefix . theme('dr_theme_image_style', array(
++            'fid' => $fid,
+             'path' => $file_info['uri'],
+             'alt' => $file_info['filename'],
+             'width' => $file_info['width'],
+             'height' => $file_info['height'],
+             'style_name' => $style_name,
++            'entity_type' => $entity_type,
++            'entity_id' => $entity_id,
+           )) . $suffix,
+         'attributes' => array(
+           'class' => array_merge(
+@@ -496,7 +555,8 @@ function _manualcrop_add_croptool(&$element, $value, &$form_state, $fid, $js_ide
+               'manualcrop-style-thumb-' . $fid,
+               'manualcrop-style-thumb-' . $fid . '-' . $style_name,
+               'manualcrop-style-preview-' . $fid,
+-              'manualcrop-style-preview-' . $fid . '-' . $style_name
++              'manualcrop-style-preview-' . $fid . '-' . $style_name,
++              $per_instance_class,
+             ),
+             (in_array($style_name, $required) ? array('manualcrop-style-required') : array())
+           ),
+@@ -583,6 +643,8 @@ function _manualcrop_process_file_entity_form(&$form, &$form_state, $instance_in
+     }
+   }
+ 
++  $form_state['instance_info'] = $instance_info;
++
+   // No valid fields instance specified, use the File Entity settings.
+   if (!isset($settings)) {
+     $settings = variable_get('manualcrop_file_entity_settings_' . $form['#entity']->type, manualcrop_default_widget_settings());
+@@ -615,25 +677,48 @@ function _manualcrop_process_file_entity_form(&$form, &$form_state, $instance_in
+ function manualcrop_save_crop_data($file, $data) {
+   // If file_entity_revisions isn't enabled, use 0.
+   $vid = (isset($file->vid) ? $file->vid : 0);
++  global $user;
++
++  $referencing_entity_id = empty($data['referencing_entity_id']) ? 0 : $data['referencing_entity_id'];
++  $referencing_entity_type = empty($data['referencing_entity_type']) ? '' : $data['referencing_entity_type'];
++
+ 
+   // Delete the existing data.
+-  db_delete('manualcrop')
+-    ->condition('fid', $file->fid)
+-    ->condition('vid', $vid)
+-    ->condition('style_name', array_keys($data))
+-    ->execute();
++  $delete = db_delete('manualcrop')
++      ->condition('fid', $file->fid)
++      ->condition('vid', $vid)
++      ->condition('style_name', array_keys($data));
++
++  if (variable_get('manualcrop_crop_per_instance', FALSE)) {
++    $delete->condition('referencing_entity_type', $referencing_entity_type)
++        ->condition('referencing_entity_id', $referencing_entity_id);
++  }
++
++  $delete->execute();
+ 
++  $cache_ids = array();
+   // Save the new crop selections.
+   foreach ($data as $style_name => $selection) {
+-    if ($selection) {
++    if (is_array($selection)) {
+       $record = array_merge($selection, array(
+         'fid' => $file->fid,
+         'vid' => $vid,
+-        'style_name' => $style_name
++        'style_name' => $style_name,
++        'referencing_entity_type' => $referencing_entity_type,
++        'referencing_entity_id' => $referencing_entity_id,
+       ));
++
+       drupal_write_record('manualcrop', $record);
++
++      $cache_key = 'dr_theme:crop:' .
++        $file->fid . ':' .
++        $style_name . ':' .
++        $referencing_entity_type . '_' . $referencing_entity_id;
++
++      $cache_ids[] = $cache_key;
+     }
+   }
++  cache_clear_all($cache_ids, 'cache');
+ }
+ 
+ /**
+@@ -670,19 +755,35 @@ function manualcrop_load_crop_selection($file, $style_name = NULL) {
+   }
+ 
+   if (isset($style_name)) {
+-    $result = db_query('SELECT c.x, c.y, c.width, c.height FROM {manualcrop} c INNER JOIN {' . $table . '} f ON c.' . $key . ' = f.' . $key . ' WHERE c.style_name = :name AND f.uri = :uri', array(
+-      ':name' => $style_name,
+-      ':uri' => $file,
+-    ));
++    $result = db_query(
++      'SELECT c.x, c.y, c.width, c.height, ' .
++      'c.referencing_entity_type, c.referencing_entity_id ' .
++      'FROM {manualcrop} c INNER JOIN {' . $table . '} f ' .
++      'ON c.' . $key . ' = f.' . $key .
++      ' WHERE c.style_name = :name AND f.uri = :uri',
++      array(
++        ':name' => $style_name,
++        ':uri' => $file,
++      )
++    );
+ 
+     return $result->fetchObject();
+   }
+   else {
+-    $result = db_query('SELECT c.style_name, c.x, c.y, c.width, c.height FROM {manualcrop} c INNER JOIN {' . $table . '} f ON c.' . $key . ' = f.' . $key . ' WHERE f.uri = :uri', array(
+-      ':uri' => $file,
+-    ));
+-
+-    return $result->fetchAllAssoc('style_name');
++    $result = db_query(
++      'SELECT c.style_name, c.x, c.y, c.width, c.height, ' .
++      'c.referencing_entity_type, c.referencing_entity_id ' .
++      'FROM {manualcrop} c INNER JOIN {' . $table . '} f ' .
++      'ON c.' . $key . ' = f.' . $key . ' WHERE f.uri = :uri',
++      array(
++        ':uri' => $file,
++      )
++    );
++    $styles = array();
++    while ($style = $result->fetchObject()) {
++      $styles[$style->style_name][] = $style;
++    }
++    return $styles;
+   }
+ }
+ 
+diff --git a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.install b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.install
+index a569d0e..c2f64a2 100644
+--- a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.install
++++ b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.install
+@@ -138,6 +138,27 @@ function manualcrop_schema() {
+         'unsigned' => TRUE,
+         'not null' => TRUE,
+       ),
++      'referencing_entity_type' => array(
++        'description' => 'Type of the entity referencing the image.',
++        'type' => 'varchar',
++        'length' => 255,
++        'not null' => TRUE,
++        'default' => '',
++      ),
++      'referencing_entity_id' => array(
++        'description' => 'ID of the entity referencing the image.',
++        'type' => 'int',
++        'unsigned' => TRUE,
++        'not null' => TRUE,
++        'default' => 0,
++      ),
++      'uid' => array(
++        'description' => 'ID of the user performing the crop.',
++        'type' => 'int',
++        'unsigned' => TRUE,
++        'not null' => TRUE,
++        'default' => 0,
++      ),
+     ),
+     'foreign keys' => array(
+       'file' => array(
+@@ -146,6 +167,9 @@ function manualcrop_schema() {
+       ),
+     ),
+     'primary key' => array('fid', 'vid', 'style_name'),
++    'indexes' => array(
++      'referencing_entity' => array('fid', 'referencing_entity_id', 'referencing_entity_type'),
++    ),
+   );
+ 
+   return $schema;
+@@ -378,6 +402,43 @@ function manualcrop_update_7108() {
+ }
+ 
+ /**
++ * Add fields for referencing entity to make use case specific crops.
++ *
++ * The user ID column is mainly required for new entitties
++ * where an entity ID is not yet available.
++ */
++function manualcrop_update_7109() {
++  db_add_field('manualcrop', 'referencing_entity_type', array(
++    'description' => 'Type of the entity referencing the image.',
++    'type' => 'varchar',
++    'length' => 255,
++    'not null' => TRUE,
++    'default' => '',
++  ));
++
++  db_add_field('manualcrop', 'referencing_entity_id', array(
++    'description' => 'ID of the entity referencing the image.',
++    'type' => 'int',
++    'unsigned' => TRUE,
++    'not null' => TRUE,
++    'default' => 0,
++  ));
++
++  db_add_field('manualcrop', 'uid', array(
++    'description' => 'ID of the user performing the crop.',
++    'type' => 'int',
++    'unsigned' => TRUE,
++    'not null' => TRUE,
++    'default' => 0,
++  ));
++
++  db_add_index('manualcrop', 'referencing_entity', array('fid', 'referencing_entity_id', 'referencing_entity_type'));
++  // Update the primary key so it includes the referencing entity.
++  db_drop_primary_key('manualcrop');
++  db_add_primary_key('manualcrop', array('fid', 'vid', 'style_name', 'referencing_entity_id', 'referencing_entity_type'));
++}
++
++/**
+  * Grant the crop permission to all user roles.
+  */
+ function _manualcrop_grant_crop_permission() {
+diff --git a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.js b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.js
+index 2eca082..2a617ba 100644
+--- a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.js
++++ b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.js
+@@ -659,6 +659,11 @@ ManualCrop.selectionStored = function(element, fid, styleName) {
+         // Style has been cropped.
+         toolOpener.addClass('manualcrop-style-cropped');
+ 
++        // Add article specific class. DR SPECIFIC.
++        if (toolOpener.closest('.field-name-field-image').length > 1) {
++          toolOpener.parent().addClass("manualcrop-node-specific");
++        }
++
+         if (toolOpener.is('input')) {
+           toolOpener.val(toolOpener.val() + ' ' + Drupal.t('(cropped)'));
+         }
+diff --git a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.module b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.module
+index 56cad1d..5b33d9b 100644
+--- a/docroot/sites/all/modules/contrib/manualcrop/manualcrop.module
++++ b/docroot/sites/all/modules/contrib/manualcrop/manualcrop.module
+@@ -401,6 +401,12 @@ function manualcrop_media_element_process($element) {
+     )
+   );
+ 
++  // Add an element in the array if crop per instance is enabled.
++  if (variable_get('manualcrop_crop_per_instance', FALSE)) {
++    $entity_id = array_shift(entity_extract_ids($element['#entity_type'], $element['#entity']));
++    $data['manualcrop']['entity_id'] = $entity_id;
++  }
++
+   // Add the options to the element.
+   $element['#media_options']['global'] += $data;
+ 
+@@ -427,14 +433,30 @@ function manualcrop_media_element_process($element) {
+  * Element validation handler; Validates each crop selection.
+  */
+ function manualcrop_croptool_validate($element, &$form_state) {
+-  if (!empty($form_state['manualcrop_data']['images']) && (!isset($form_state['triggering_element']) || !in_array($form_state['triggering_element']['#value'], array(t('Upload'), t('Remove'))))) {
++
++  if (
++    !empty($form_state['manualcrop_data']['images']) &&
++    (
++      !isset($form_state['triggering_element']) ||
++      !in_array(
++        $form_state['triggering_element']['#value'],
++        array(t('Upload'), t('Remove'))
++      )
++    )
++  ) {
++    global $user;
++
+     // Create a new key, to store processed selections, in the data array.
+     $form_state['manualcrop_data']['selections'] = array();
+     $selections = &$form_state['manualcrop_data']['selections'];
++    $per_instance = variable_get('manualcrop_crop_per_instance', FALSE);
+ 
+     // Loop trough the positions to get the Manual Crop data.
+     foreach ($form_state['manualcrop_data']['images'] as $fid => $image) {
+-      $value = drupal_array_get_nested_value($form_state['values'], $image['element_parents']);
++      $value = drupal_array_get_nested_value(
++        $form_state['values'],
++        $image['element_parents']
++      );
+ 
+       if (!empty($value['manualcrop_selections'])) {
+         // Create a selections array for the current image, the first element is
+@@ -475,6 +497,31 @@ function manualcrop_croptool_validate($element, &$form_state) {
+                     'width' => $crop[2],
+                     'height' => $crop[3],
+                   );
++
++                  // Add data for relating a crop to an instance.
++                  // Set the 'per instance' required values.
++                  $use_form_state_instance_info =
++                    !empty($form_state['instance_info']) &&
++                    !empty($form_state['instance_info']['entity_type']);
++
++                  $entity_type = $use_form_state_instance_info ?
++                    $form_state['instance_info']['entity_type'] :
++                    $element['#entity_type'];
++
++                  if ($per_instance && !empty($entity_type)) {
++
++                    if ($use_form_state_instance_info) {
++                      $entity_id = $form_state['instance_info']['entity_id'];
++                    }
++                    else {
++                      $entity_id_extract = entity_extract_ids($entity_type, $element['#entity']);
++                      $entity_id = $entity_id_extract[0];
++                    }
++
++                    $selections[$fid]['styles'][$style_name]['referencing_entity_type'] = $entity_type;
++                    $selections[$fid]['styles'][$style_name]['referencing_entity_id'] = $entity_id;
++                    $selections[$fid]['styles'][$style_name]['uid'] = $user->uid;
++                  }
+                   continue;
+                 }
+               }
+@@ -508,9 +555,15 @@ function manualcrop_croptool_validate($element, &$form_state) {
+  * Form submit handler; Saves each crop selection.
+  */
+ function manualcrop_croptool_submit($form, &$form_state) {
++
+   if (!empty($form_state['manualcrop_data']['selections'])) {
+     // Loop trough the selections to save them.
+     foreach ($form_state['manualcrop_data']['selections'] as $fid => $data) {
++      if (empty($data['styles']['referencing_entity_type'])) {
++        $data['styles']['referencing_entity_type'] = $form['#entity_type'];
++        $entity_id_extract = entity_extract_ids($form['#entity_type'], $form['#entity']);
++        $data['styles']['referencing_entity_id'] = array_shift($entity_id_extract);
++      }
+       // In general this file entity should be loaded from a cache, so this
+       // should not cost any performance.
+       manualcrop_save_crop_data(file_load($fid), $data['styles']);
+@@ -552,17 +605,61 @@ function manualcrop_file_presave($file) {
+ /**
+  * Implements hook_file_entity_update().
+  */
+-function manualcrop_entity_update($file, $type) {
++function manualcrop_entity_update($entity, $type) {
++  // Clean up crops for images no longer referenced.
++  if (variable_get('manualcrop_crop_per_instance', FALSE)) {
++    $field_info = field_info_instances($type, $entity->type);
++    $fields = array_keys($field_info);
++    $entity_id_extract = entity_extract_ids($type, $entity);
++    $entity_id = array_shift($entity_id_extract);
++
++    $fids_to_keep = array();
++    $run_cleanup = FALSE;
++    $metadata_wrapper = entity_metadata_wrapper($type, $entity);
++
++    // If the field is a file reference, check if the fid was among
++    // the crops and update the record.
++    foreach ($fields as $field_name) {
++      if (!is_object($metadata_wrapper->$field_name)) {
++        continue;
++      }
++
++      // Delete crops from images no longer on the entity.
++      $value = $metadata_wrapper->$field_name->value();
++      $info = $metadata_wrapper->$field_name->info();
++
++      if (is_array($info['field']) &&
++        ($info['field']['type'] == 'image')) {
++        $run_cleanup = TRUE;
++        foreach ($value as $delta => $file) {
++          $fids_to_keep[] = $file['fid'];
++        }
++      }
++    }
++
++    if ($run_cleanup) {
++      $delete = db_delete('manualcrop')
++          ->condition('referencing_entity_id', $entity_id)
++          ->condition('referencing_entity_type', $type);
++
++      if (!empty($fids_to_keep) && $entity_id > 0) {
++        $delete->condition('fid', $fids_to_keep, 'NOT IN');
++      }
++      $delete->execute();
++    }
++  }
++
+   // This uses hook_entity_update to guarantee it comes after the revision has
+   // been saved, which uses hook_file_update().
+   // Bail if it's not a file or presave() did not give us new data to write.
+-  if ($type != 'file' || empty($file->manualcrop_data)) {
++  if ($type != 'file' || empty($entity->manualcrop_data)) {
+     return;
+   }
+ 
+   // Make a copy of revisioned data when the new revision is created so that it
+   // can be cropped without harming the prior revision.
+-  manualcrop_save_crop_data($file, $file->manualcrop_data);
++  manualcrop_save_crop_data($entity, $entity->manualcrop_data['selections'][$entity->fid]['styles']);
++
+ 
+   if (variable_get('manualcrop_cache_control', TRUE)) {
+     // Clear the cached image paths.
+@@ -571,6 +668,56 @@ function manualcrop_entity_update($file, $type) {
+ }
+ 
+ /**
++ * Implements hook_entity_insert().
++ *
++ * Get the user´s latest entry in the manualcrop table and update it to link to the current entity.
++ */
++function manualcrop_entity_insert($entity, $type) {
++  global $user;
++
++  $unassigned_crops = db_query('SELECT c.* FROM {manualcrop} c WHERE '
++    . 'c.referencing_entity_type = :type AND c.referencing_entity_id = 0 AND c.uid = :uid',
++    array(
++      ':uid' => $user->uid,
++      ':type' => $type,
++    ))->fetchAllAssoc('style_name');
++
++  if (empty($unassigned_crops)) {
++    return;
++  }
++
++  // Gather the relevant fids to update all in one query.
++  $fids_to_update = array();
++  foreach ($unassigned_crops as $crop_type => $crop) {
++    $fids_to_update[] = $crop->fid;
++  }
++
++  $field_info = field_info_instances($type, $entity->type);
++  $fields = array_keys($field_info);
++  $entity_id = entity_extract_ids($type, $entity);
++
++  // Iterate through the fields to check for cropped images (may be done more efficient).
++  foreach ($fields as $field_name) {
++    // If the field is a file reference, check if the fid was among the crops and update the record.
++    if (!empty($entity->$field_name[LANGUAGE_NONE]) && !empty($entity->$field_name[LANGUAGE_NONE][0]['fid'])) {
++      foreach ($entity->$field_name[LANGUAGE_NONE] as $delta => $file) {
++        if (in_array($file->fid, $crop_fids)) {
++          $fids_to_update[] = $file->fid;
++        }
++      }
++    }
++  }
++
++  $updated = db_update('manualcrop')
++    ->fields(array('referencing_entity_id' => $entity_id[0]))
++    ->condition('referencing_entity_id', 0)
++    ->condition('referencing_entity_type', $type)
++    ->condition('fid', $fids_to_update, 'IN')
++    ->condition('uid', $user->uid)
++    ->execute();
++}
++
++/**
+  * Preprocessing for theme_image(); Force reloading of an image after re-cropping.
+  */
+ function manualcrop_preprocess_image(&$variables) {
