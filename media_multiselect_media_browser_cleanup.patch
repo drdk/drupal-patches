@@ -1,0 +1,15 @@
+diff --git a/docroot/sites/all/modules/contrib/media_multiselect/media_multiselect.js b/docroot/sites/all/modules/contrib/media_multiselect/media_multiselect.js
+index 2c721a9..894f267 100644
+--- a/docroot/sites/all/modules/contrib/media_multiselect/media_multiselect.js
++++ b/docroot/sites/all/modules/contrib/media_multiselect/media_multiselect.js
+@@ -21,6 +21,10 @@
+             };
+ 
+             var wrapper = $(this).closest('div.form-wrapper');
++            // Remove old media browsers and modals.
++            // They will make the selection fail.
++            $('.ui-dialog, #mediaBrowser').remove();
++
+             // Launch the Media Browser.
+             Drupal.media.popups.mediaBrowser(function(files) {
+               Drupal.ajax[element].media_multiselect_files = files;
