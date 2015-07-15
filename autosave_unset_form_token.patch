@@ -1,0 +1,13 @@
+diff --git a/docroot/sites/all/modules/contrib/autosave/autosave.module b/docroot/sites/all/modules/contrib/autosave/autosave.module
+index 2f5e3e0..d488b22 100644
+--- a/docroot/sites/all/modules/contrib/autosave/autosave.module
++++ b/docroot/sites/all/modules/contrib/autosave/autosave.module
+@@ -290,6 +290,8 @@ function autosave_restore($form_id, $timestamp) {
+     // Drupal think the form is being rebuilt as part of a multi-step form.
+     $form_state['rebuild'] = TRUE;
+ 
++    // Unset form_token from saved formto avoid outdated form between sessions.
++    unset($form_state['input']['form_token']);
+     // When restoring we will need to know the form token so that the user can
+     // be validated.
+     $form = drupal_build_form($form_id, $form_state);
