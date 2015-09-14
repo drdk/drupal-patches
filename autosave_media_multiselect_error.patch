@@ -1,8 +1,8 @@
 diff --git a/docroot/sites/all/modules/contrib/autosave/autosave.js b/docroot/sites/all/modules/contrib/autosave/autosave.js
-index e1f7412..6209b48 100644
+index 9faba18..9c87ea4 100644
 --- a/docroot/sites/all/modules/contrib/autosave/autosave.js
 +++ b/docroot/sites/all/modules/contrib/autosave/autosave.js
-@@ -11,105 +11,109 @@ Drupal.behaviors.autosave.attach = function (context, settings) {
+@@ -11,105 +11,107 @@ Drupal.behaviors.autosave.attach = function (context, settings) {
      $('body').append('<div id="autosave-status"></div>');
    }
  
@@ -13,12 +13,11 @@ index e1f7412..6209b48 100644
 -    interval: autosaveSettings.period * 1000, 
 -    url: autosaveSettings.url,
 -    setup: function (e, o) {
--      // If there is a saved form for this user, let him know so he can reload it
--      // if desired.
+-      // If there is a saved form for this user, let them know so it can be 
+-      // reloaded if desired.
 -      if (autosaveSettings.savedTimestamp) {
 -        showingRestoreCommand = true;
 +  if (undefined !== settings.autosave) {
-+    $("[name='autosave_form_path']").closest("form").css("opacity", 1);
 +    autosaveSettings = settings.autosave;
 +    var $selector = $('input[name="form_id"][value="' + autosaveSettings.form_id + '"] ').parents('form').not('.autosave-processed');
 +    $selector.addClass('autosave-processed').autosave({
@@ -26,8 +25,8 @@ index e1f7412..6209b48 100644
 +      interval: autosaveSettings.period * 1000,
 +      url: autosaveSettings.url,
 +      setup: function (e, o) {
-+        // If there is a saved form for this user, let him know so he can reload it
-+        // if desired.
++        // If there is a saved form for this user, let them know so it can be
++        // reloaded if desired.
 +        if (autosaveSettings.savedTimestamp) {
 +          showingRestoreCommand = true;
  
@@ -50,7 +49,6 @@ index e1f7412..6209b48 100644
 +              return false;
 +            });
 +            $('#autosave-status .restore-link').click(function(e) {
-+              $("[name='autosave_form_path']").closest("form").css("opacity", 0.4);
 +              showingRestoreCommand = false;
 +              Drupal.behaviors.autosave.hideMessage();
 +            });

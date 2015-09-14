@@ -1,221 +1,17 @@
-diff --git a/docroot/sites/all/modules/contrib/autosave/autosave.js b/docroot/sites/all/modules/contrib/autosave/autosave.js
-index e1f7412..77bc47b 100644
---- a/docroot/sites/all/modules/contrib/autosave/autosave.js
-+++ b/docroot/sites/all/modules/contrib/autosave/autosave.js
-@@ -11,105 +11,107 @@ Drupal.behaviors.autosave.attach = function (context, settings) {
-     $('body').append('<div id="autosave-status"></div>');
-   }
- 
--  autosaveSettings = settings.autosave;
--  var $selector = $('input[name="form_id"][value="' + autosaveSettings.form_id + '"] ').parents('form').not('.autosave-processed');
--  $selector.addClass('autosave-processed').autosave({
--    // Autosave interval time in ms
--    interval: autosaveSettings.period * 1000, 
--    url: autosaveSettings.url,
--    setup: function (e, o) {
--      // If there is a saved form for this user, let him know so he can reload it
--      // if desired.
--      if (autosaveSettings.savedTimestamp) {
--        showingRestoreCommand = true;
-+  if (undefined !== settings.autosave) {
-+    autosaveSettings = settings.autosave;
-+    var $selector = $('input[name="form_id"][value="' + autosaveSettings.form_id + '"] ').parents('form').not('.autosave-processed');
-+    $selector.addClass('autosave-processed').autosave({
-+      // Autosave interval time in ms
-+      interval: autosaveSettings.period * 1000,
-+      url: autosaveSettings.url,
-+      setup: function (e, o) {
-+        // If there is a saved form for this user, let him know so he can reload it
-+        // if desired.
-+        if (autosaveSettings.savedTimestamp) {
-+          showingRestoreCommand = true;
- 
--        restoreCallback = function(html) {
--          Drupal.behaviors.autosave.displayMessage(html, {
--            timeout: autosaveSettings.timeout * 1000,
-+          restoreCallback = function(html) {
-+            Drupal.behaviors.autosave.displayMessage(html, {
-+              timeout: autosaveSettings.timeout * 1000,
-+            });
-+            $('#autosave-status .ignore-link').click(function(e) {
-+              showingRestoreCommand = false;
-+              Drupal.behaviors.autosave.hideMessage();
-+              // Remove the autosaved form from the database if settings
-+              // are such.
-+              if (autosaveSettings.ignoreBehavior) {
-+                var path = Drupal.settings.basePath + 'autosave/remove/' + autosaveSettings.form_id + '/' + autosaveSettings.savedTimestamp + '/' + autosaveSettings.form_token;
-+                $.post(path, autosaveSettings);
-+              }
-+              return false;
-+            });
-+            $('#autosave-status .restore-link').click(function(e) {
-+              showingRestoreCommand = false;
-+              Drupal.behaviors.autosave.hideMessage();
-+            });
-+            Drupal.attachBehaviors(document);
-+          };
-+
-+          // Markup for the restore popup
-+          $.ajax({
-+            type: "POST",
-+            url: Drupal.settings.basePath + 'autosave/popup/autosave_restore_popup',
-+            data: autosaveSettings,
-+            success: restoreCallback
-           });
--          $('#autosave-status .ignore-link').click(function(e) {
--            showingRestoreCommand = false;
--            Drupal.behaviors.autosave.hideMessage();
--            // Remove the autosaved form from the database if settings 
--            // are such.
--            if (autosaveSettings.ignoreBehavior) {
--              var path = Drupal.settings.basePath + 'autosave/remove/' + autosaveSettings.form_id + '/' + autosaveSettings.savedTimestamp + '/' + autosaveSettings.form_token; 
--              $.post(path, autosaveSettings);
-+        }
-+
-+        // Wire up TinyMCE to autosave.
-+        if (typeof(tinymce) !== 'undefined') {
-+          setInterval(function() {
-+            // Save text data from the tinymce area back to the original form element.
-+            // Once it's in the original form element, autosave will notice it
-+            // and do what it needs to do.
-+            // Note: There seems to be a bug where after a form is restored,
-+            // everything works fine but tinyMCE keeps reporting an undefined
-+            // error internally.  As its code is compressed I have absolutely no
-+            // way to debug this. If you can figure it out, please file a patch.
-+            var triggers = Drupal.settings.wysiwyg.triggers;
-+            var id;
-+            var field;
-+            for (id in triggers) {
-+              field = triggers[id].field;
-+              $('#' + field).val(tinymce.get(field).getContent());
-             }
--            return false;
--          });
--          $('#autosave-status .restore-link').click(function(e) {
--            showingRestoreCommand = false;
--            Drupal.behaviors.autosave.hideMessage();
--          });
--          Drupal.attachBehaviors(document);
--        };
--        
--        // Markup for the restore popup
--        $.ajax({
--          type: "POST",
--          url: Drupal.settings.basePath + 'autosave/popup/autosave_restore_popup', 
--          data: autosaveSettings,
--          success: restoreCallback
--        });
--      }
-+          }, autosaveSettings.period * 1000);
-+        }
- 
--      // Wire up TinyMCE to autosave.
--      if (typeof(tinymce) !== 'undefined') {
--        setInterval(function() {
--          // Save text data from the tinymce area back to the original form element.
--          // Once it's in the original form element, autosave will notice it
--          // and do what it needs to do.
--          // Note: There seems to be a bug where after a form is restored,
--          // everything works fine but tinyMCE keeps reporting an undefined
--          // error internally.  As its code is compressed I have absolutely no
--          // way to debug this. If you can figure it out, please file a patch.
--          var triggers = Drupal.settings.wysiwyg.triggers;
--          var id;
--          var field;
--          for (id in triggers) {
--            field = triggers[id].field;
--            $('#' + field).val(tinymce.get(field).getContent());
--          }
--        }, autosaveSettings.period * 1000);
--      }
-+        // Wire up CKEditor to autosave.
-+        if (typeof(CKEDITOR) !== 'undefined'){
-+          setInterval(function() {
-+            var id;
-+            for (id in CKEDITOR.instances) {
-+              var instance = CKEDITOR.instances[id];
-+              instance.updateElement();
-+            }
-+          }, autosaveSettings.period * 1000);
-+        }
-+      },
- 
--      // Wire up CKEditor to autosave.
--      if (typeof(CKEDITOR) !== 'undefined'){
--        setInterval(function() {
--          var id;
--          for (id in CKEDITOR.instances) {
--            var instance = CKEDITOR.instances[id];
--            instance.updateElement();
--          }
--        }, autosaveSettings.period * 1000);
--      }
--    },
--    
--    save: function (e, o) {
--      var savedCallback = function(html) {
--        Drupal.behaviors.autosave.displayMessage(html,
--          { timeout: 3000 });
--      };
--      if (!autosaveSettings.hidden) {
--        $.ajax({
--          type: "POST",
--          url: Drupal.settings.basePath + 'autosave/popup/autosave_saved_popup', 
--          data: autosaveSettings,
--          success: savedCallback
--        });
--      }
--    },
--    before: function () {
--      // Do not autosave the form while the Ignore/Restore popup is shown.
--      return !showingRestoreCommand;
--    },
--    dirty: function (e, o) {
--      if (showingRestoreCommand) {
--        Drupal.behaviors.autosave.hideMessage();
-+      save: function (e, o) {
-+        var savedCallback = function(html) {
-+          Drupal.behaviors.autosave.displayMessage(html,
-+            { timeout: 3000 });
-+        };
-+        if (!autosaveSettings.hidden) {
-+          $.ajax({
-+            type: "POST",
-+            url: Drupal.settings.basePath + 'autosave/popup/autosave_saved_popup',
-+            data: autosaveSettings,
-+            success: savedCallback
-+          });
-+        }
-+      },
-+      before: function () {
-+        // Do not autosave the form while the Ignore/Restore popup is shown.
-+        return !showingRestoreCommand;
-+      },
-+      dirty: function (e, o) {
-+        if (showingRestoreCommand) {
-+          Drupal.behaviors.autosave.hideMessage();
-+        }
-       }
--    }
--  });
-+    });
-+  }
- };
- 
- Drupal.behaviors.autosave.hideMessage = function() {
 diff --git a/docroot/sites/all/modules/contrib/autosave/autosave.module b/docroot/sites/all/modules/contrib/autosave/autosave.module
-index 72f8818..2f5e3e0 100644
+index 36881e0..8c81626 100644
 --- a/docroot/sites/all/modules/contrib/autosave/autosave.module
 +++ b/docroot/sites/all/modules/contrib/autosave/autosave.module
-@@ -276,6 +276,7 @@ function autosave_restore($form_id, $timestamp) {
-   $record = autosave_get_autosaved_form($form_id, $timestamp, $user->uid);
+@@ -281,7 +281,7 @@ function autosave_restore($form_id, $timestamp) {
+   $commands = array();
  
    if ($record) {
+-    $form_state = array();
 +    $form_state = unserialize($record->serialized);
      // We need to extract and reuse any additional page arguments that the
      // original form may have.  That's especially true for, say, a node form,
      // which needs the node object passed in as well.
-@@ -284,13 +285,6 @@ function autosave_restore($form_id, $timestamp) {
+@@ -290,13 +290,6 @@ function autosave_restore($form_id, $timestamp) {
        require_once DRUPAL_ROOT . '/' . $menu_item['include_file'];
        $form_state['build_info']['files'][] = $menu_item['include_file'];
      }
@@ -229,7 +25,7 @@ index 72f8818..2f5e3e0 100644
  
      // Disable the "this form has already been submitted" nonsense by making
      // Drupal think the form is being rebuilt as part of a multi-step form.
-@@ -381,11 +375,10 @@ function autosave_save() {
+@@ -392,11 +385,10 @@ function autosave_save() {
    $prevent_autosave = FALSE;
    drupal_alter('autosave_prevent', $prevent_autosave);
  

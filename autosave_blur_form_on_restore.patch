@@ -1,5 +1,5 @@
 diff --git a/docroot/sites/all/modules/contrib/autosave/autosave.js b/docroot/sites/all/modules/contrib/autosave/autosave.js
-index 77bc47b..6209b48 100644
+index 9c87ea4..bc8ceb8 100644
 --- a/docroot/sites/all/modules/contrib/autosave/autosave.js
 +++ b/docroot/sites/all/modules/contrib/autosave/autosave.js
 @@ -12,6 +12,7 @@ Drupal.behaviors.autosave.attach = function (context, settings) {

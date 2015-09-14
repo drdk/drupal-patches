@@ -1,10 +1,10 @@
 diff --git a/docroot/sites/all/modules/contrib/autosave/autosave.module b/docroot/sites/all/modules/contrib/autosave/autosave.module
-index 2f5e3e0..d488b22 100644
+index 976246f..36881e0 100644
 --- a/docroot/sites/all/modules/contrib/autosave/autosave.module
 +++ b/docroot/sites/all/modules/contrib/autosave/autosave.module
-@@ -290,6 +290,8 @@ function autosave_restore($form_id, $timestamp) {
-     // Drupal think the form is being rebuilt as part of a multi-step form.
-     $form_state['rebuild'] = TRUE;
+@@ -305,6 +305,8 @@ function autosave_restore($form_id, $timestamp) {
+     // Stop recording of form error messages
+     $form_state['triggering_element']['#limit_validation_errors'] = array();
  
 +    // Unset form_token from saved formto avoid outdated form between sessions.
 +    unset($form_state['input']['form_token']);
